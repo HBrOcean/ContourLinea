@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ContourLinea</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="toolbar">
+        <div class="tb-group">
+          <button id="btn-open" class="btn btn-primary" title="打开 SVG (Ctrl+O)">打开 SVG</button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button id="btn-zoom-out" class="btn icon" title="缩小 (Ctrl+-)">−</button>
+          <button id="btn-zoom-level" class="btn level" title="点击恢复 100%">100%</button>
+          <button id="btn-zoom-in" class="btn icon" title="放大 (Ctrl+=)">＋</button>
+          <button id="btn-fit" class="btn" title="适应窗口 (F)">适应窗口</button>
+          <button id="btn-reset" class="btn" title="实际大小 (Ctrl+0)">1:1</button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
+          <button id="btn-bg" class="btn">背景：棋盘</button>
+          <label class="switch" title="导出 PNG 时使用透明背景">
+            <input type="checkbox" id="chk-transparent" checked />
+            <span>导出透明</span>
+          </label>
+          <button id="btn-export" class="btn btn-primary" title="导出 PNG (Ctrl+S)">导出 PNG</button>
+        </div>
+
+        <div class="tb-spacer"></div>
+
+        <div class="tb-group">
+          <button id="btn-close" class="btn" title="关闭当前文件 (Ctrl+W)">关闭</button>
+        </div>
+      </header>
+
+      <div class="tabs" id="tabs" hidden></div>
+
+      <div class="main">
+        <main class="stage bg-checker" id="stage">
+          <div class="stage-canvas" id="canvas"></div>
+          <div class="empty" id="empty">
+            <div class="empty-icon">SVG</div>
+            <p class="empty-title">把 SVG 文件拖到这里</p>
+            <p class="empty-sub">或点击左上角「打开 SVG」（支持多选）</p>
+          </div>
+          <div class="drop-overlay" id="drop-overlay"><span>松开以打开</span></div>
+        </main>
+
+        <aside class="inspector" id="inspector"></aside>
+      </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
