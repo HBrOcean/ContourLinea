@@ -11,6 +11,7 @@
       <header class="toolbar">
         <div class="tb-group">
           <button id="btn-open" class="btn btn-primary" title="打开 SVG (Ctrl+O)">打开 SVG</button>
+          <button id="btn-batch" class="btn" title="批量转换 PNG (Ctrl+Shift+B)">批量</button>
         </div>
 
         <div class="tb-sep"></div>
@@ -26,12 +27,20 @@
         <div class="tb-sep"></div>
 
         <div class="tb-group">
+          <button id="btn-theme" class="btn" title="切换主题 (Ctrl+Shift+T)">主题：自动</button>
           <button id="btn-bg" class="btn">背景：棋盘</button>
+        </div>
+
+        <div class="tb-sep"></div>
+
+        <div class="tb-group">
           <label class="switch" title="导出 PNG 时使用透明背景">
             <input type="checkbox" id="chk-transparent" checked />
             <span>导出透明</span>
           </label>
           <button id="btn-export" class="btn btn-primary" title="导出 PNG (Ctrl+S)">导出 PNG</button>
+          <button id="btn-export-pdf" class="btn" title="导出 PDF (Ctrl+Shift+S)">导出 PDF</button>
+          <button id="btn-copy" class="btn" title="复制为位图到剪贴板">复制</button>
         </div>
 
         <div class="tb-spacer"></div>
@@ -46,15 +55,71 @@
       <div class="main">
         <main class="stage bg-checker" id="stage">
           <div class="stage-canvas" id="canvas"></div>
+
           <div class="empty" id="empty">
             <div class="empty-icon">SVG</div>
             <p class="empty-title">把 SVG 文件拖到这里</p>
             <p class="empty-sub">或点击左上角「打开 SVG」（支持多选）</p>
+            <div class="recent" id="recent" hidden>
+              <div class="recent-title">最近打开</div>
+              <div class="recent-list" id="recent-list"></div>
+            </div>
           </div>
+
+          <div class="float-tools">
+            <button id="btn-grid" class="fbtn" title="切换网格 (Ctrl+Shift+G)">网格</button>
+            <button id="btn-measure" class="fbtn" title="测量两点距离（Esc 退出）">测量</button>
+          </div>
+
+          <div class="pos-chip" id="pos-chip" hidden></div>
+
+          <div class="anim-bar" id="anim-bar" hidden>
+            <button id="btn-anim-toggle" class="fbtn" title="暂停 / 播放动画">⏸</button>
+            <span class="anim-time" id="anim-time">0.0s</span>
+            <input type="range" id="anim-slider" min="0" max="300" step="1" value="0" />
+          </div>
+
           <div class="drop-overlay" id="drop-overlay"><span>松开以打开</span></div>
         </main>
 
-        <aside class="inspector" id="inspector"></aside>
+        <aside class="inspector">
+          <div class="ins-tabs">
+            <button id="tab-info" class="ins-tab active" title="文件信息">信息</button>
+            <button id="tab-code" class="ins-tab" title="SVG 源码 (F4)">源码</button>
+          </div>
+
+          <div id="pane-info" class="pane">
+            <div id="inspector-info"></div>
+            <div class="export-opts">
+              <div class="ins-title">导出选项</div>
+              <div class="ins-section">
+                <label class="opt-row">
+                  <span>导出引擎</span>
+                  <select id="sel-engine">
+                    <option value="webview">WebView（与预览一致）</option>
+                    <option value="rust">Rust · resvg（快速）</option>
+                  </select>
+                </label>
+                <label class="opt-row">
+                  <span>导出倍率</span>
+                  <select id="sel-scale">
+                    <option value="1">1×</option>
+                    <option value="2" selected>2×</option>
+                    <option value="4">4×</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <div id="pane-code" class="pane hidden">
+            <div class="code-actions">
+              <button id="btn-copy-code" class="btn">复制全部源码</button>
+              <span class="code-size" id="code-size"></span>
+            </div>
+            <pre class="code-view" id="code-view"><code id="code-text"></code></pre>
+          </div>
+        </aside>
       </div>
     </div>
 

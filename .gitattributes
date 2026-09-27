@@ -1,0 +1,20 @@
+# 统一跨平台换行与 diff 行为
+* text=auto eol=lf
+
+# Windows 批处理 / PowerShell 保持 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# 二进制文件不做换行处理
+*.png binary
+*.ico binary
+*.icns binary
+*.exe binary
+*.msi binary
+*.dmg binary
+*.AppImage binary
+
+# 语言统计（ linguist ）
+package-lock.json linguist-generated=true
+src-tauri/Cargo.lock linguist-generated=true

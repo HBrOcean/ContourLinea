@@ -4,7 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:
 
 jobs:
   build:
@@ -61,8 +60,73 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: 'ContourLinea ${{ github.ref_name }}'
           releaseBody: |
-            基于 Tauri v2 的 SVG 预览器。
+            基于 Tauri v2 的 SVG 预览器 ContourLinea。
+
             下载对应平台安装包即可：Windows(.msi/.exe) / macOS(.dmg) / Linux(.AppImage/.deb)
+
+            自动更新与代码签名配置见 docs/ 目录。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # ⑯ 汇总校验和 + 变更日志，附加到 Release
+  checksums:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: bundles
+
+      - name: Generate SHA256SUMS and changelog
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p release
+          # 展平所有平台的安装包
+          find bundles -type f \( -name '*.msi' -o -name '*.exe' -o -name '*.dmg' \
+            -o -name '*.AppImage' -o -name '*.deb' -o -name '*.rpm' -o -name '*.app.tar.gz' \) \
+            -exec cp {} release/ \; || true
+          if compgen -G "release/*" > /dev/null; then
+            (cd release && sha256sum * > SHA256SUMS.txt)
+          else
+            echo "no bundle files found" && exit 0
+          fi
+
+          # changelog：上一个 tag 到当前 tag 的提交
+          PREV=$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)
+          {
+            echo "## Changelog"
+            echo
+            if [ -n "${PREV}" ]; then
+              git log --oneline --no-decorate "${PREV}..${TAG}"
+            else
+              git log --oneline --no-decorate "${TAG}"
+            fi
+            echo
+            echo "## 校验和"
+            echo
+            echo '```'
+            cat release/SHA256SUMS.txt
+            echo '```'
+          } > changelog.md
+
+      - name: Upload checksums & update release notes
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF_NAME}"
+          gh release upload "${TAG}" release/SHA256SUMS.txt --clobber
+          # 合并：原 notes + changelog/校验和
+          gh release view "${TAG}" --json body -q .body > /tmp/old-notes.md || echo "" > /tmp/old-notes.md
+          cat /tmp/old-notes.md changelog.md > /tmp/notes.md
+          gh release edit "${TAG}" --notes-file /tmp/notes.md
