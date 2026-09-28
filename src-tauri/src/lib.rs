@@ -25,6 +25,7 @@ struct ExportResult {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct RenderedPng {
     width: u32,
     height: u32,
@@ -148,14 +149,12 @@ fn render_svg_to_png(
         1.0
     };
 
-    let mut fontdb = resvg::usvg::fontdb::Database::new();
-    fontdb.load_system_fonts();
-    let opts = resvg::usvg::Options {
-        fontdb: std::sync::Arc::new(fontdb),
-        ..Default::default()
-    };
-    let tree = resvg::usvg::Tree::from_str(content, &opts)
-        .map_err(|e| format!("SVG 解析失败：{e:?}"))?;
+    // 用官方 fontdb_mut() 注入系统字体
+    // （避免直接构造 usvg::Options 字面量——它是 #[non_exhaustive]，外部 crate 无法这样初始化）
+    let mut opts = resvg::usvg::Options::default();
+    opts.fontdb_mut().load_system_fonts();
+    let tree =
+        resvg::usvg::Tree::from_str(content, &opts).map_err(|e| format!("SVG 解析失败：{e:?}"))?;
 
     let size = tree.size();
     let w = ((size.width() as f64) * scale).round().max(1.0) as u32;
@@ -186,7 +185,11 @@ fn export_png_native(
 ) -> Result<ExportResult, String> {
     let (w, h, png) = render_svg_to_png(&content, scale, background.as_deref())?;
     std::fs::write(&path, &png).map_err(|e| e.to_string())?;
-    Ok(ExportResult { path, width: w, height: h })
+    Ok(ExportResult {
+        path,
+        width: w,
+        height: h,
+    })
 }
 
 /// Rust 引擎渲染 PNG 并返回 base64（供预览 / 剪贴板复用）
