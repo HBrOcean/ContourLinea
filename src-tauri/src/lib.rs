@@ -167,7 +167,7 @@ fn render_svg_to_png(
         let _ = pixmap.fill(color);
     }
     let ts = resvg::tiny_skia::Transform::from_scale(scale as f32, scale as f32);
-    resvg::render(&tree, ts, pixmap.as_mut());
+    resvg::render(&tree, ts, &mut pixmap.as_mut());
 
     let png = pixmap
         .encode_png()
