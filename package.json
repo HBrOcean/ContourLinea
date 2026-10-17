@@ -21,7 +21,7 @@
     "@tauri-apps/plugin-clipboard-manager": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.2.0",
     "@tauri-apps/plugin-process": "^2.2.0",
-    "@tauri-apps/plugin-updater": "^2.5.0",
+    "@tauri-apps/plugin-updater": "^2.13.3",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
