@@ -4,6 +4,12 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.2.1] - 2026-10-17
+
+### 修复
+
+- **tauri 版本一致性检查导致全部平台构建失败**：`tauri build` 要求 NPM 包与 Rust crate 的 minor 版本对齐。`@tauri-apps/*` 仍锁在 9 月的旧版本（`api 2.11.1` / `plugin-dialog 2.7.3` / `plugin-process 2.3.1` / `plugin-updater 2.12.0` / `plugin-clipboard-manager 2.3.3`），而 Rust 侧已演进到 `2.12 / 2.8 / 2.4 / 2.13 / 2.4`，CI 四个平台均在 `Build and publish release` 秒挂。现按 Rust crate 的 minor 对齐为：`api ~2.12.4`、`plugin-dialog ~2.8.3`、`plugin-process ~2.4.0`、`plugin-updater ~2.13.3`、`plugin-clipboard-manager ~2.4.2`
+
 ## [1.2.0] - 2026-10-17
 
 ### 新增

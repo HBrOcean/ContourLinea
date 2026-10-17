@@ -1,7 +1,7 @@
 {
   "name": "contour-linea",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "ContourLinea — a lightweight SVG viewer & toolkit built with Tauri v2 + TypeScript",
   "author": "Oceaniat",
@@ -17,11 +17,11 @@
     "version:set": "node scripts/sync-version.mjs"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.1.1",
-    "@tauri-apps/plugin-clipboard-manager": "^2.2.0",
-    "@tauri-apps/plugin-dialog": "^2.2.0",
-    "@tauri-apps/plugin-process": "^2.2.0",
-    "@tauri-apps/plugin-updater": "^2.5.0",
+    "@tauri-apps/api": "~2.12.4",
+    "@tauri-apps/plugin-clipboard-manager": "~2.4.2",
+    "@tauri-apps/plugin-dialog": "~2.8.3",
+    "@tauri-apps/plugin-process": "~2.4.0",
+    "@tauri-apps/plugin-updater": "~2.13.3",
     "pdf-lib": "^1.17.1"
   },
   "devDependencies": {
