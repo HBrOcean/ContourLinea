@@ -1,6 +1,6 @@
 [package]
 name = "contour-linea"
-version = "1.2.1"
+version = "1.2.2"
 description = "ContourLinea — a lightweight SVG viewer & toolkit built with Tauri v2 + TypeScript"
 authors = ["Oceaniat"]
 license = "MIT"

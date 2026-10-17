@@ -140,7 +140,13 @@ export async function copyBitmap(): Promise<void> {
     const blob = await renderPngViaWebView(doc.raw, 2)
     const base64 = await blobToBase64(blob)
     const { writeImage } = await import('@tauri-apps/plugin-clipboard-manager')
-    await writeImage(base64)
+    const { tempDir } = await import('@tauri-apps/api/path')
+    const { join } = await import('./path-join')
+    // 注意：writeImage 的 string 参数会被当作「文件路径」解析（raw RGBA 才用 Uint8Array），
+    // 因此先把 PNG 落到临时目录，再以路径写入剪贴板；直接传 base64 会失败。
+    const tmpPath = join(await tempDir(), 'contour-linea-clipboard.png')
+    await api.savePng(tmpPath, base64)
+    await writeImage(tmpPath)
     toast('位图已复制到剪贴板（2× 分辨率）')
   } catch (err) {
     toast(err instanceof Error ? err.message : '复制失败')

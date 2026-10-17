@@ -58,7 +58,7 @@ jobs:
         run: npm ci
 
       - name: Build and publish release
-        uses: tauri-apps/tauri-action@v0
+        uses: tauri-apps/tauri-action@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -72,6 +72,10 @@ jobs:
             自动更新与代码签名配置见 docs/ 目录。
           releaseDraft: true
           prerelease: false
+          # 多平台并发创建同一 draft release 时自动重试，避免 already_exists 冲突
+          retryAttempts: 3
+          # 未配置 updater 签名密钥前不生成 latest.json
+          uploadUpdaterJson: false
           args: ${{ matrix.args }}
 
   # ⑯ 汇总校验和 + 变更日志，附加到 Release

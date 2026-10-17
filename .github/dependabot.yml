@@ -1,32 +1,41 @@
 version: 2
 
 updates:
-  # 前端依赖
+  # ---------------- 前端依赖 ----------------
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "chore(deps)"
     groups:
       frontend-dev:
         dependency-type: "development"
+      tauri-apps:
+        patterns:
+          - "@tauri-apps/*"
     ignore:
-      # Vite / TypeScript 大版本升级需人工评估构建链兼容性
       - dependency-name: "vite"
         update-types: ["version-update:semver-major"]
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # 关键：@tauri-apps/* 必须与 Rust crate 的 minor 版本严格对齐，
+      # 自动升级 minor/major 会打破 `tauri build` 的版本一致性检查（v1.2.1 事故根因）。
+      # 升级 Tauri 时请手动同时改 npm 包与 Cargo 依赖。patch 升级不受影响。
+      - dependency-name: "@tauri-apps/*"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
 
-  # Rust 依赖
+  # ---------------- Rust 依赖 ----------------
   - package-ecosystem: "cargo"
     directory: "/src-tauri"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     commit-message:
       prefix: "chore(deps)"
     groups:
@@ -38,11 +47,27 @@ updates:
           - "resvg"
           - "usvg"
           - "tiny-skia"
+    ignore:
+      # 与上面同理：Rust 侧 tauri* 的 minor 升级需与 @tauri-apps/* 同步进行
+      - dependency-name: "tauri"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      - dependency-name: "tauri-*"
+        update-types:
+          - "version-update:semver-minor"
+          - "version-update:semver-major"
+      # resvg / usvg 版本号成对演进，API 变动较大，交人工评估
+      - dependency-name: "resvg"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      - dependency-name: "usvg"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
 
-  # GitHub Actions 版本
+  # ---------------- GitHub Actions ----------------
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "monthly"
+    open-pull-requests-limit: 1
     commit-message:
       prefix: "ci(deps)"
