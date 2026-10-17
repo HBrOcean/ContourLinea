@@ -10,6 +10,18 @@
 
 体积只有同功能 Electron 应用的 **1/10 左右**（复用系统 WebView，不打包浏览器内核）。
 
+## ⬇️ 下载安装
+
+从 [Releases](https://github.com/HBrOcean/ContourLinea/releases) 下载对应平台的安装包，无需额外运行时（Windows 依赖系统 WebView2，Win10/11 默认已安装）：
+
+| 平台 | 安装包 |
+| --- | --- |
+| Windows | `.msi`（推荐）/ `-setup.exe`（NSIS） |
+| macOS | `.dmg`（Apple Silicon / Intel 分开发布） |
+| Linux | `.AppImage`（免安装）/ `.deb` / `.rpm` |
+
+> 安装包暂未做代码签名：Windows 可能提示"未知发布者"（点"更多信息 → 仍要运行"），macOS 需右键 → 打开。详见 [docs/CODE-SIGNING.md](./docs/CODE-SIGNING.md)。
+
 ## ✨ 功能
 
 ### 预览
@@ -43,7 +55,7 @@
 
 ### 工程
 
-- 32MB 文件大小保护，解析异常友好提示
+- 多重资源上限：单文件 32MB、svgz 解压 32MB（防 gzip 炸弹）、单张画布 1.2 亿像素、批量目录 256MB
 - 预览前剥离 `<script>` 与 `on*` 事件属性 + CSP 兜底
 - 自动更新（`tauri-plugin-updater`，配置见 [docs/UPDATER.md](./docs/UPDATER.md)）
 - 多平台 CI：构建产物（Artifacts）+ 一键发 Release（附 SHA256 校验和与变更日志）
@@ -84,7 +96,11 @@ contour-linea/
 ├── scripts/sync-version.mjs   # 三处版本号统一
 ├── samples/                   # 示例 SVG（含动画样例）
 ├── docs/                      # UPDATER.md / CODE-SIGNING.md
-└── .github/workflows/         # build.yml（校验+多平台构建）/ release.yml（发布）
+├── CHANGELOG.md               # 更新日志
+├── push.bat                   # Windows 一键推送到 GitHub
+└── .github/
+    ├── workflows/             # build.yml（校验 + 多平台构建）/ release.yml（发布）
+    └── dependabot.yml         # 依赖自动更新
 ```
 
 ## 🚀 开发
@@ -100,7 +116,10 @@ contour-linea/
 ```bash
 npm install        # 安装前端依赖
 npm run tauri dev  # 开发模式（前端热更新 + Rust 热重载）
-npm run check      # 仅类型检查
+npm run check      # 仅类型检查（tsc --noEmit）
+
+# Rust 单元测试（颜色解析 / base64 / 渲染尺寸 / 文件扫描）
+cd src-tauri && cargo test --lib
 ```
 
 ## 📦 打包
@@ -146,6 +165,10 @@ git push origin main --tags           # ③ 推送 → 自动构建 + 发布 Dra
 | `Ctrl + Shift + T` | 切换主题 |
 | 滚轮 / 拖拽 | 缩放 / 平移 |
 | `Esc` | 退出测量模式 |
+
+## 📝 更新日志
+
+见 [CHANGELOG.md](./CHANGELOG.md)。
 
 ## 📄 License
 

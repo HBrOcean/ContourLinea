@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
 
+# 发布流程不并发取消：同一 tag 重复触发时排队，避免产物互相覆盖
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   build:
     permissions:

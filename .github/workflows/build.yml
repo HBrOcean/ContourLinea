@@ -1,9 +1,10 @@
 name: Build
 
 on:
+  # 只对分支推送 / PR / 手动触发；tag 由 release.yml 负责构建并发布，
+  # 避免打 tag 时两套 workflow 各跑一遍多平台构建（白等一倍时间）
   push:
     branches: [main, master]
-    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -46,6 +47,10 @@ jobs:
       - name: TypeScript check
         run: npx tsc --noEmit
 
+      # tauri-build 编译期会校验 frontendDist（../dist）是否存在，必须先构建前端
+      - name: Build frontend
+        run: npx vite build
+
       - name: Rust format check
         working-directory: src-tauri
         run: cargo fmt --all -- --check
@@ -55,6 +60,10 @@ jobs:
         # 首次接入先只输出警告、不阻断构建；告警清零后可改为 `cargo clippy --all-targets -- -D warnings` 并移除 continue-on-error
         continue-on-error: true
         run: cargo clippy --all-targets
+
+      - name: Rust unit tests
+        working-directory: src-tauri
+        run: cargo test --lib
 
   build:
     needs: lint

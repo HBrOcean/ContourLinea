@@ -10,6 +10,9 @@ use tauri::{Emitter, Manager};
 /// 单个 SVG 文件读取上限（防止超大文件卡死 UI）
 const MAX_SVG_BYTES: u64 = 32 * 1024 * 1024;
 
+/// 批量转换时一次性读取的目录内容总大小上限（避免大目录把内存打满）
+const MAX_BATCH_TOTAL_BYTES: u64 = 256 * 1024 * 1024;
+
 #[derive(Serialize, Clone)]
 struct SvgFile {
     path: String,
@@ -47,12 +50,20 @@ fn read_svg_impl(path: &str) -> Result<SvgFile, String> {
 
     let raw = std::fs::read(path).map_err(|e| e.to_string())?;
     let content = if path.to_ascii_lowercase().ends_with(".svgz") {
-        let mut decoder = flate2::read::GzDecoder::new(raw.as_slice());
-        let mut text = String::new();
-        decoder
-            .read_to_string(&mut text)
+        // 防御 gzip 炸弹：最多解压 MAX_SVG_BYTES + 1 字节，超出即判定超限
+        let decoder = flate2::read::GzDecoder::new(raw.as_slice());
+        let mut limited = decoder.take(MAX_SVG_BYTES + 1);
+        let mut buf = Vec::new();
+        limited
+            .read_to_end(&mut buf)
             .map_err(|e| format!("svgz 解压失败：{e}"))?;
-        text
+        if buf.len() as u64 > MAX_SVG_BYTES {
+            return Err(format!(
+                "svgz 解压后超过 {} MB 上限",
+                MAX_SVG_BYTES / 1024 / 1024
+            ));
+        }
+        String::from_utf8(buf).map_err(|e| format!("文件不是 UTF-8 编码：{e}"))?
     } else {
         String::from_utf8(raw).map_err(|e| format!("文件不是 UTF-8 编码：{e}"))?
     };
@@ -92,8 +103,16 @@ fn list_svg_dir(dir: String) -> Result<Vec<SvgFile>, String> {
     paths.sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
 
     let mut files = Vec::new();
+    let mut total: u64 = 0;
     for p in &paths {
         if let Ok(f) = read_svg_impl(p) {
+            total += f.content.len() as u64;
+            if total > MAX_BATCH_TOTAL_BYTES {
+                return Err(format!(
+                    "目录内 SVG 总大小超过 {} MB，请分批转换",
+                    MAX_BATCH_TOTAL_BYTES / 1024 / 1024
+                ));
+            }
             files.push(f);
         }
     }
@@ -159,6 +178,12 @@ fn render_svg_to_png(
     let size = tree.size();
     let w = ((size.width() as f64) * scale).round().max(1.0) as u32;
     let h = ((size.height() as f64) * scale).round().max(1.0) as u32;
+
+    // 防御超大画布：RGBA 每像素 4 字节，超过上限会直接打爆内存
+    const MAX_RENDER_PIXELS: u64 = 120_000_000;
+    if (w as u64) * (h as u64) > MAX_RENDER_PIXELS {
+        return Err(format!("渲染尺寸过大（{w}×{h} 像素），请降低倍率后重试"));
+    }
 
     let mut pixmap = resvg::tiny_skia::Pixmap::new(w, h).ok_or("创建画布失败")?;
     if let Some(bg) = background {
@@ -359,4 +384,106 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+/* -------------------------------- 测试 -------------------------------- */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parse_hex_color_accepts_valid_forms() {
+        let c = parse_hex_color("#3fa9f5").unwrap();
+        assert_eq!(
+            (c.red(), c.green(), c.blue(), c.alpha()),
+            (0x3f, 0xa9, 0xf5, 255)
+        );
+        // 不带 # 也应支持
+        assert!(parse_hex_color("ffffff").is_some());
+    }
+
+    #[test]
+    fn parse_hex_color_rejects_invalid_forms() {
+        assert!(parse_hex_color("#12345").is_none());
+        assert!(parse_hex_color("#zzzzzz").is_none());
+        assert!(parse_hex_color("").is_none());
+        assert!(parse_hex_color("red").is_none());
+    }
+
+    #[test]
+    fn decode_base64_roundtrip() {
+        assert_eq!(decode_base64("U1ZH").unwrap(), b"SVG");
+        assert!(decode_base64("@@@").is_err());
+    }
+
+    #[test]
+    fn render_produces_expected_size_with_scale() {
+        let svg = r##"<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80"><rect width="120" height="80" fill="#000"/></svg>"##;
+        let (w, h, png) = render_svg_to_png(svg, 2.0, None).unwrap();
+        assert_eq!((w, h), (240, 160));
+        // PNG magic number
+        assert_eq!(&png[..8], &[0x89, b'P', b'N', b'G', 0x0d, 0x0a, 0x1a, 0x0a]);
+    }
+
+    #[test]
+    fn render_with_solid_background() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"/>"#;
+        let (w, h, png) = render_svg_to_png(svg, 1.0, Some("#ffffff")).unwrap();
+        assert_eq!((w, h), (4, 4));
+        assert!(!png.is_empty());
+    }
+
+    #[test]
+    fn render_rejects_oversized_canvas() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="20000" height="20000"><rect width="10" height="10"/></svg>"#;
+        let err = render_svg_to_png(svg, 16.0, None).unwrap_err();
+        assert!(err.contains("渲染尺寸过大"), "实际错误：{err}");
+    }
+
+    #[test]
+    fn render_normalizes_invalid_scale() {
+        let svg = r#"<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"/>"#;
+        // 0 / 负数 / NaN 都应回落到 1.0
+        for s in [0.0, -3.0, f64::NAN] {
+            let (w, h, _) = render_svg_to_png(svg, s, None).unwrap();
+            assert_eq!((w, h), (10, 10));
+        }
+    }
+
+    #[test]
+    fn read_plain_svg_file() {
+        let path = std::env::temp_dir().join(format!(
+            "contour-linea-test-{}-plain.svg",
+            std::process::id()
+        ));
+        std::fs::write(&path, r#"<svg xmlns="http://www.w3.org/2000/svg"/>"#).unwrap();
+
+        let file = read_svg_impl(path.to_str().unwrap()).unwrap();
+        assert!(file.content.contains("<svg"));
+        assert!(file.name.ends_with(".svg"));
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn list_svg_dir_filters_and_sorts() {
+        let dir =
+            std::env::temp_dir().join(format!("contour-linea-test-{}-dir", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+
+        let a = dir.join("b.svg");
+        let b = dir.join("a.svg");
+        let c = dir.join("note.txt");
+        for p in [&a, &b, &c] {
+            std::fs::write(p, r#"<svg xmlns="http://www.w3.org/2000/svg"/>"#).unwrap();
+        }
+
+        let files = list_svg_dir(dir.to_str().unwrap()).unwrap();
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].name, "a.svg");
+        assert_eq!(files[1].name, "b.svg");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
